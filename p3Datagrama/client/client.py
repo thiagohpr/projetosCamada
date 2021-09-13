@@ -10,6 +10,7 @@
 #para acompanhar a execução e identificar erros, construa prints ao longo do código! 
 
 
+from threading import Timer
 from enlace import *
 import time
 import numpy as np
@@ -29,7 +30,7 @@ imageW="img/imagemCopia.png"
 
 
 
-# txBuffer=open("C:/Users/thpro/Desktop/Camada Física/projetosCamada/p3Datagrama/client/imagem.png",'rb').read()
+
 txBuffer=(255).to_bytes(114*2+10, byteorder='big')
 
 def calcula_quant(tamanho):
@@ -44,12 +45,12 @@ def cria_head(n_atual,n_total,n_bytespay):
     head[1]=(n_atual).to_bytes(1, byteorder='big')
     head[2]=(n_total).to_bytes(1, byteorder='big')
     head[3]=(n_bytespay).to_bytes(1, byteorder='big')
-    head[4]=(0).to_bytes(1, byteorder='big')
-    head[5]=(0).to_bytes(1, byteorder='big')
-    head[6]=(0).to_bytes(1, byteorder='big')
-    head[7]=(0).to_bytes(1, byteorder='big')
-    head[8]=(0).to_bytes(1, byteorder='big')
-    head[9]=(0).to_bytes(1, byteorder='big')
+    head[4]=(170).to_bytes(1, byteorder='big')
+    head[5]=(170).to_bytes(1, byteorder='big')
+    head[6]=(170).to_bytes(1, byteorder='big')
+    head[7]=(170).to_bytes(1, byteorder='big')
+    head[8]=(170).to_bytes(1, byteorder='big')
+    head[9]=(170).to_bytes(1, byteorder='big')
     
     return head
 
@@ -64,11 +65,15 @@ def cria_datagrama(arquivo):
     bytes=cria_lista(arquivo)
     payload=114
   
-    quant_pay=calcula_quant(len(arquivo))
+    quant_pay=calcula_quant(len(arquivo))+1
     lista_datagramas=[0]*quant_pay
     i=0
     for datagrama in range(quant_pay):
-        if i!=quant_pay-1:
+
+        if i==0:
+            head=cria_head(0,quant_pay,0)
+            bytes_pay=[]
+        elif i!=quant_pay-1:
             #Se não é o último pacote
             head=cria_head(i+1,quant_pay,payload)
             bytes_pay=[0]*payload
@@ -83,63 +88,90 @@ def cria_datagrama(arquivo):
             for quant in range(bytes_resto):
                 bytes_pay[quant]=bytes.pop(0)
 
-        eop=[(170).to_bytes(1, byteorder='big')]*4
+        eop=[(170).to_bytes(1, byteorder='big')]*3
+        eop.append((204).to_bytes(1, byteorder='big'))
         data=head+bytes_pay+eop
         lista_datagramas[i]=data
         i+=1
     return lista_datagramas
 
-datagramas=cria_datagrama(txBuffer)
-print (datagramas[0])
-print (datagramas[1])
-print (datagramas[-1])
-print (len(txBuffer)%114)
-print (int.from_bytes(datagramas[-1][3], byteorder='big'))
 
-
-
-
-
-
-# def main():
-#     try:
-#         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
-#         #para declarar esse objeto é o nome da porta.
-#         com1 = enlace('COM3')
+def main():
+    try:
+        #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
+        #para declarar esse objeto é o nome da porta.
+        com1 = enlace('COM3')
         
     
-#         # Ativa comunicacao. Inicia os threads e a comunicação seiral 
-#         com1.enable()
-#         print ('Comunicação aberta')
-#         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
+        # Ativa comunicacao. Inicia os threads e a comunicação seiral 
+        com1.enable()
+        print ('Comunicação aberta')
+        #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
 
-#         #txBuffer: sequência de comandos a ser enviado para o outro computador.
+        #txBuffer: sequência de comandos a ser enviado para o outro computador.
         
-#         seq,tam=cria_sequencia()
-#         i=1
-#         for comand in seq:
+        # seq,tam=cria_sequencia()
+        # i=1
+        # for comand in seq:
         
-#             print ('Transmissão do comando {} começando'.format(i))
-#             txBuffer=comand
-#             print ('Enviando {}'.format(txBuffer))
-#             com1.sendData(np.asarray(txBuffer))
-#             i+=1
-#             time.sleep(0.2)
-#         print ("Comandos enviados pelo cliente: {}".format(tam))
-#         rxBuffer,nRx=com1.getData(1)
-#         print ("Comandos recebidos pelo servidor: {}".format(int.from_bytes(rxBuffer, byteorder='big')))
+        #     print ('Transmissão do comando {} começando'.format(i))
+        #     txBuffer=comand
+        #     print ('Enviando {}'.format(txBuffer))
+        #     com1.sendData(np.asarray(txBuffer))
+        #     i+=1
+        #     time.sleep(0.2)
+        # print ("Comandos enviados pelo cliente: {}".format(tam))
+        # rxBuffer,nRx=com1.getData(1)
+        # print ("Comandos recebidos pelo servidor: {}".format(int.from_bytes(rxBuffer, byteorder='big')))
         
-#         print("-------------------------")
-#         print("Comunicação encerrada")
-#         print("-------------------------")
-#         com1.disable()
-        
-#     except Exception as erro:
-#         print("ops! :-\\")
-#         print(erro)
-#         com1.disable()
+        datagramas=cria_datagrama(txBuffer)
+        hand=True
+        print ("Iniciando o Handshake")
+        com1.sendData(np.asarray(datagramas[0]))
+        print ("Enviando {}".format(datagramas[0]))
+        # t=Timer(5.0,timeout)
+        # t.start()
+
+        seconds_to_go_for = 5 # How long the timer will go for
+        current_time = int(time.time()) # Gets the time before the timer starts
+
+
+        while hand:
+            rxBuffer,nRx=com1.getData(14)
+            print(rxBuffer)
+            if rxBuffer==(255).to_bytes(1, byteorder='big'):
+                res=input("Reenviar: S/N")
+                if res=="S":
+                    print ("Reenviando o Handshake")
+                    com1.sendData(np.asarray(datagramas[0]))
+                    
+                else:
+                    hand=False
+                    programa=False
+            
+            else:
+                hand=False
+                programa=True
+                print("Recebeu confirmação")
+            
+            
+        print (programa)
+        # while programa:
+
         
 
-#     #so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
-# if __name__ == "__main__":
-#     main()
+
+        print("-------------------------")
+        print("Comunicação encerrada")
+        print("-------------------------")
+        com1.disable()
+        
+    except Exception as erro:
+        print("ops! :-\\")
+        print(erro)
+        com1.disable()
+        
+
+   # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
+if __name__ == "__main__":
+    main()

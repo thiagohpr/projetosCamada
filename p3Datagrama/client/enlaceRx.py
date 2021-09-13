@@ -68,7 +68,14 @@ class RX(object):
         return(b)
 
     def getNData(self, size):
+
+        seconds_to_go_for = 5 # How long the timer will go for
+        current_time = int(time.time()) # Gets the time before the timer starts
+
         while(self.getBufferLen() < size):
+            time_now = int(time.time())
+            if time_now >= current_time + seconds_to_go_for:
+                return ((255).to_bytes(1, byteorder='big'))
             time.sleep(0.05)                 
         return(self.getBuffer(size))
 
