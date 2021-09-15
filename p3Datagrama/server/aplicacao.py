@@ -24,15 +24,62 @@ import numpy as np
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"                  # Windows(variacao de)
 
-def retorna_tamanho(lista):
-    if (170).to_bytes(1, byteorder='big') in lista:
-        lista.remove((170).to_bytes(1, byteorder='big'))
+def calcula_quant(tamanho):
+    if tamanho%114==0:
+        return tamanho//114
+    else:
+        return tamanho//114 + 1
 
-    if (1).to_bytes(1, byteorder='big') in lista:
-        lista.remove((1).to_bytes(1, byteorder='big'))
+def cria_head(n_atual,n_total,n_bytespay):
+    head=[0]*10
+    head[0]=(170).to_bytes(1, byteorder='big')
+    head[1]=(n_atual).to_bytes(1, byteorder='big')
+    head[2]=(n_total).to_bytes(1, byteorder='big')
+    head[3]=(n_bytespay).to_bytes(1, byteorder='big')
+    head[4]=(0).to_bytes(1, byteorder='big')
+    head[5]=(0).to_bytes(1, byteorder='big')
+    head[6]=(0).to_bytes(1, byteorder='big')
+    head[7]=(0).to_bytes(1, byteorder='big')
+    head[8]=(0).to_bytes(1, byteorder='big')
+    head[9]=(0).to_bytes(1, byteorder='big')
+    
+    return head
 
-    return len(lista)
+def cria_lista(binario):
+    lista=[]
+    for bit in binario:
+        lista.append((bit).to_bytes(1, byteorder='big'))
+    return lista
 
+def cria_datagrama(arquivo):
+    #Retorna uma lista de datagramas (cada elemento é uma lista de bygtes com head, payload e eop) a partir de um arquivo
+    bytes=cria_lista(arquivo)
+    payload=114
+  
+    quant_pay=calcula_quant(len(arquivo))
+    lista_datagramas=[0]*quant_pay
+    i=0
+    for datagrama in range(quant_pay):
+        if i!=quant_pay-1:
+            #Se não é o último pacote
+            head=cria_head(i+1,quant_pay,payload)
+            bytes_pay=[0]*payload
+            for quant in range(payload):
+                bytes_pay[quant]=bytes.pop(0)
+        
+        else:
+            #Se é o último pacote
+            head=cria_head(i+1,quant_pay,len(arquivo)%payload)
+            bytes_resto=(len(arquivo))%payload
+            bytes_pay=[0]*bytes_resto
+            for quant in range(bytes_resto):
+                bytes_pay[quant]=bytes.pop(0)
+
+        eop=[(170).to_bytes(1, byteorder='big')]*4
+        data=head+bytes_pay+eop
+        lista_datagramas[i]=data
+        i+=1
+    return lista_datagramas
 
 def main():
     try:
@@ -43,63 +90,19 @@ def main():
     
         # Ativa comunicacao. Inicia os threads e a comunicação seiral 
         com1.enable()
-        #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
         print("comunicacao aberta")
-        #aqui você deverá gerar os dados a serem transmitidos. 
-        #seus dados a serem transmitidos são uma lista de bytes a serem transmitidos. Gere esta lista com o 
-        #nome de txBuffer. Esla sempre irá armazenar os dados a serem enviados.
-        
-        #txBuffer = imagem em bytes!
-    
-
-    
-        #faça aqui uma conferência do tamanho do seu txBuffer, ou seja, quantos bytes serão enviados.
-       
-            
-        #finalmente vamos transmitir os tados. Para isso usamos a funçao sendData que é um método da camada enlace.
-        #faça um print para avisar que a transmissão vai começar.
-        print("transmissão")
-        #tente entender como o método send funciona!
-        #Cuidado! Apenas trasmitimos arrays de bytes! Nao listas!
-        
-       
-        # A camada enlace possui uma camada inferior, TX possui um método para conhecermos o status da transmissão
-        # Tente entender como esse método funciona e o que ele retorna
-        
-        #Agora vamos iniciar a recepção dos dados. Se algo chegou ao RX, deve estar automaticamente guardado
-        #Observe o que faz a rotina dentro do thread RX
-        #print um aviso de que a recepção vai começar.
-        
-        #Será que todos os bytes enviados estão realmente guardadas? Será que conseguimos verificar?
-        #Veja o que faz a funcao do enlaceRX  getBufferLen
-      
-        #acesso aos bytes recebidos
-    
-        # rxBuffer, nRx = com1.getData(1)
-        # print("recebeu {}" .format(rxBuffer))
-
         rxBuffer = 0
+        lista = []
 
-        comandos = []
-
-        while rxBuffer != (1).to_bytes(1, byteorder='big'):
+        while  rxBuffer != (204).to_bytes(1, byteorder='big'):
             rxBuffer, nRx = com1.getData(1)
-            if rxBuffer != (2).to_bytes(1, byteorder='big'):
-                print(rxBuffer)
-                comandos.append(rxBuffer)
-            else:
-                rxBuffer, nRx = com1.getData(2)
-                print(rxBuffer)
-                comandos.append(rxBuffer)
+            print(rxBuffer)
+            lista.append(rxBuffer)
+            time.sleep(0.05)
+        
+        com1.sendData(np.asarray(lista))
 
-        tamanho = retorna_tamanho(comandos)
-        print(tamanho)
-
-        txBuffer = (tamanho).to_bytes(1, byteorder='big')
-        com1.sendData(np.asarray(txBuffer))
-        print("enviando quantidade de comandos")
-        # Encerra comunicação
-        com1.disable()
+        
         
     except Exception as erro:
         print("ops! :-\\")
