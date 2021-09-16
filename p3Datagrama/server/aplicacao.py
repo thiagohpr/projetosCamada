@@ -101,6 +101,69 @@ def main():
             time.sleep(0.05)
         
         com1.sendData(np.asarray(lista))
+        print(lista)
+        print('inicando leitura dos pacotes')
+
+        if int.from_bytes(lista[0], byteorder='big') == 170:
+            pacotes = int.from_bytes(lista[2], byteorder='big')
+        else:
+            pacotes = int.from_bytes(lista[1], byteorder='big')
+
+
+        datagrama = []
+        for i in range(pacotes):
+            datagrama.append([])
+            
+        
+        i=0
+        while i != pacotes:
+            rxBuffer, nRx = com1.getData(1)
+            datagrama[i].append(rxBuffer)
+            time.sleep(0.05)
+            print(rxBuffer)
+            if rxBuffer == (204).to_bytes(1, byteorder='big'):
+                print(datagrama[i])
+                time.sleep(4)
+                if i>=1:
+                    print (int.from_bytes(datagrama[i][1], byteorder='big'))
+                    print(int.from_bytes(datagrama[i-1][1], byteorder='big'))
+                    if int.from_bytes(datagrama[i][1], byteorder='big') == int.from_bytes(datagrama[i-1][1], byteorder='big') + 1:
+                        print('número de pacote correto')
+                        if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
+                            print('número de bytes correto')
+                            com1.sendData((100).to_bytes(1, byteorder='big'))
+                            i+=1
+                            time.sleep(0.1)
+                        else: 
+                            print('número de bytes incorreto')
+                            com1.sendData((101).to_bytes(1, byteorder='big'))
+                            datagrama[i]=[]
+                    else:
+                        print('número de pacote incorreto')
+                        com1.sendData((101).to_bytes(1, byteorder='big'))
+                        datagrama[i]=[]
+                
+                else:
+                    if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
+                        print('número de bytes correto')
+                        com1.sendData((100).to_bytes(1, byteorder='big'))
+                        i+=1
+                        time.sleep(0.1)
+                    else: 
+                        print('número de bytes incorreto')
+                        com1.sendData((101).to_bytes(1, byteorder='big'))
+                        datagrama[i]=[]
+                    
+
+                
+
+        print(datagrama)
+        com1.disable()
+    
+            
+
+                
+                
 
         
         
