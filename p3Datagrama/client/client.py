@@ -31,7 +31,6 @@ imageW="img/imagemCopia.png"
 
 
 
-txBuffer=(255).to_bytes(114*2+10, byteorder='big')
 
 def calcula_quant(tamanho):
     if tamanho%114==0:
@@ -65,24 +64,24 @@ def cria_datagrama(arquivo):
     bytes=cria_lista(arquivo)
     payload=114
   
-    quant_pay=calcula_quant(len(arquivo))+1
-    lista_datagramas=[0]*quant_pay
+    quant_pay=calcula_quant(len(arquivo))
+    lista_datagramas=[0]*(quant_pay+1)
     i=0
-    for datagrama in range(quant_pay):
+    for datagrama in range(quant_pay+1):
 
         if i==0:
             head=cria_head(0,quant_pay,0)
             bytes_pay=[]
-        elif i!=quant_pay-1:
+        elif i!=quant_pay:
             #Se não é o último pacote
-            head=cria_head(i+1,quant_pay,payload)
+            head=cria_head(i,quant_pay,payload)
             bytes_pay=[0]*payload
             for quant in range(payload):
                 bytes_pay[quant]=bytes.pop(0)
         
         else:
             #Se é o último pacote
-            head=cria_head(i+1,quant_pay,len(arquivo)%payload)
+            head=cria_head(i,quant_pay,len(arquivo)%payload)
             bytes_resto=(len(arquivo))%payload
             bytes_pay=[0]*bytes_resto
             for quant in range(bytes_resto):
@@ -95,7 +94,6 @@ def cria_datagrama(arquivo):
         i+=1
     return lista_datagramas
 
-
 def main():
     try:
         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
@@ -107,37 +105,21 @@ def main():
         com1.enable()
         print ('Comunicação aberta')
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
-
-        #txBuffer: sequência de comandos a ser enviado para o outro computador.
         
-        # seq,tam=cria_sequencia()
-        # i=1
-        # for comand in seq:
-        
-        #     print ('Transmissão do comando {} começando'.format(i))
-        #     txBuffer=comand
-        #     print ('Enviando {}'.format(txBuffer))
-        #     com1.sendData(np.asarray(txBuffer))
-        #     i+=1
-        #     time.sleep(0.2)
-        # print ("Comandos enviados pelo cliente: {}".format(tam))
-        # rxBuffer,nRx=com1.getData(1)
-        # print ("Comandos recebidos pelo servidor: {}".format(int.from_bytes(rxBuffer, byteorder='big')))
-        
+        txBuffer=(255).to_bytes(114*2+10, byteorder='big')
         datagramas=cria_datagrama(txBuffer)
         hand=True
         print ("Iniciando o Handshake")
-        com1.sendData(np.asarray(datagramas[0]))
-        print ("Enviando {}".format(datagramas[0]))
-        # t=Timer(5.0,timeout)
-        # t.start()
-
-        seconds_to_go_for = 5 # How long the timer will go for
-        current_time = int(time.time()) # Gets the time before the timer starts
+        for byte in datagramas[0]:
+                txBuffer=byte
+                com1.sendData(np.asarray(txBuffer))
+                time.sleep(0.2)
+                
 
 
         while hand:
-            rxBuffer,nRx=com1.getData(14)
+            print("Esperando handshake do server.")
+            rxBuffer,nRx=com1.getData(13)
             print(rxBuffer)
             if rxBuffer==(255).to_bytes(1, byteorder='big'):
                 res=input("Reenviar: S/N")
@@ -154,11 +136,36 @@ def main():
                 programa=True
                 print("Recebeu confirmação")
             
+        i=1 
+        print ("Iniciando envio do datagrama")
+        while programa:
+            #enviar o datagrama[i] byte a byte
             
-        print (programa)
-        # while programa:
+            if i==int.from_bytes(datagramas[0][2], byteorder='big')+1:
+                print("Envio de todos os pacotes confirmados!")
+                programa=False
+            else:
+                print ('Transmissão do pacote {} começando'.format(i))
+                for byte in datagramas[i]:
+                    txBuffer=byte
+                    com1.sendData(np.asarray(txBuffer))
+                    time.sleep(0.2)
 
-        
+                #esperar o servidor enviar uma confirmação
+                # print("Esperando confirmação.")
+
+                rxBuffer,nRx=com1.getData(1)
+                print(rxBuffer)
+                if rxBuffer==(100).to_bytes(1, byteorder='big'):
+                    print("Servidor confirmou o pacote.")
+                    i+=1
+
+                elif rxBuffer==(101).to_bytes(1, byteorder='big'):
+                    print("Servidor recebeu o pacote errado. Reenviando.")
+                elif rxBuffer==(255).to_bytes(1, byteorder='big'):
+                    print("Timeout no recebimento da confirmação. Finalizando o programa.")
+                    programa=False
+
 
 
         print("-------------------------")
@@ -175,3 +182,6 @@ def main():
    # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
 if __name__ == "__main__":
     main()
+
+
+
