@@ -25,11 +25,6 @@ import random
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"                  # Windows(variacao de)
 
-imageR="imagem.png"
-imageW="img/imagemCopia.png"
-
-
-
 
 
 def calcula_quant(tamanho):
@@ -119,11 +114,12 @@ def main():
 
         while hand:
             print("Esperando handshake do server.")
-            rxBuffer,nRx=com1.getData(13)
+            rxBuffer,nRx=com1.getData(1)
             print(rxBuffer)
             if rxBuffer==(255).to_bytes(1, byteorder='big'):
                 res=input("Reenviar: S/N")
                 if res=="S":
+                    com1.sendData((101).to_bytes(1, byteorder='big'))
                     print ("Reenviando o Handshake")
                     com1.sendData(np.asarray(datagramas[0]))
                     
@@ -134,6 +130,7 @@ def main():
             else:
                 hand=False
                 programa=True
+                com1.sendData((100).to_bytes(1, byteorder='big'))
                 print("Recebeu confirmação")
             
         i=1 
@@ -144,15 +141,13 @@ def main():
             if i==int.from_bytes(datagramas[0][2], byteorder='big')+1:
                 print("Envio de todos os pacotes confirmados!")
                 programa=False
+                receber=True
             else:
                 print ('Transmissão do pacote {} começando'.format(i))
                 for byte in datagramas[i]:
                     txBuffer=byte
                     com1.sendData(np.asarray(txBuffer))
                     time.sleep(0.2)
-
-                #esperar o servidor enviar uma confirmação
-                # print("Esperando confirmação.")
 
                 rxBuffer,nRx=com1.getData(1)
                 print(rxBuffer)
@@ -165,9 +160,12 @@ def main():
                 elif rxBuffer==(255).to_bytes(1, byteorder='big'):
                     print("Timeout no recebimento da confirmação. Finalizando o programa.")
                     programa=False
+                    receber=False
 
 
-
+        if receber:
+            rxBuffer,nRx=com1.getData(1)
+            print("Cliente recebeu {}.".format(rxBuffer))
         print("-------------------------")
         print("Comunicação encerrada")
         print("-------------------------")
@@ -182,6 +180,3 @@ def main():
    # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
 if __name__ == "__main__":
     main()
-
-
-
