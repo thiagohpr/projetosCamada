@@ -24,6 +24,8 @@ import numpy as np
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"                  # Windows(variacao de)
 
+imageR="/imagem.png"
+
 def calcula_quant(tamanho):
     if tamanho%114==0:
         return tamanho//114
@@ -81,6 +83,18 @@ def cria_datagrama(arquivo):
         i+=1
     return lista_datagramas
 
+def agrupa_pacotes(datagrama):
+    lista = []
+    for pacote in datagrama:
+        payload = int.from_bytes(pacote[3], byteorder='big')
+        for byte in pacote[10:payload+10]:
+            lista.append(byte)
+        print(len(lista))
+    return (b''.join(lista))
+    
+
+
+
 def main():
     try:
         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
@@ -93,14 +107,22 @@ def main():
         print("comunicacao aberta")
         rxBuffer = 0
         lista = []
-
-        while  rxBuffer != (204).to_bytes(1, byteorder='big'):
-            rxBuffer, nRx = com1.getData(1)
-            print(rxBuffer)
-            lista.append(rxBuffer)
-            time.sleep(0.05)
+        handshake = True
+        while handshake:
+            while  rxBuffer != (204).to_bytes(1, byteorder='big'):
+                rxBuffer, nRx = com1.getData(1)
+                print(rxBuffer)
+                lista.append(rxBuffer)
+                time.sleep(0.05)
         
-        com1.sendData(np.asarray(lista))
+            com1.sendData((100).to_bytes(1, byteorder='big'))
+            rxBuffer, nRx = com1.getData(1)
+            if rxBuffer == (100).to_bytes(1, byteorder='big'):
+                handshake = False
+            elif rxBuffer == (101).to_bytes(1, byteorder='big'):
+                lista = []
+                
+
         print(lista)
         print('inicando leitura dos pacotes')
 
@@ -116,19 +138,31 @@ def main():
             
         
         i=0
+        
         while i != pacotes:
             rxBuffer, nRx = com1.getData(1)
             datagrama[i].append(rxBuffer)
-            time.sleep(0.05)
             print(rxBuffer)
             if rxBuffer == (204).to_bytes(1, byteorder='big'):
-                print(datagrama[i])
-                time.sleep(4)
-                if i>=1:
-                    print (int.from_bytes(datagrama[i][1], byteorder='big'))
-                    print(int.from_bytes(datagrama[i-1][1], byteorder='big'))
-                    if int.from_bytes(datagrama[i][1], byteorder='big') == int.from_bytes(datagrama[i-1][1], byteorder='big') + 1:
-                        print('número de pacote correto')
+                if datagrama[i][len(datagrama[i])-2] == (170).to_bytes(1, byteorder='big'):
+                    if i>=1:
+                        if int.from_bytes(datagrama[i][1], byteorder='big') == int.from_bytes(datagrama[i-1][1], byteorder='big') + 1:
+                            print('número de pacote correto')
+                            if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
+                                print('número de bytes correto')
+                                com1.sendData((100).to_bytes(1, byteorder='big'))
+                                i+=1
+                                time.sleep(0.1)
+                            else: 
+                                print('número de bytes incorreto')
+                                com1.sendData((101).to_bytes(1, byteorder='big'))
+                                datagrama[i]=[]
+                        else:
+                            print('número de pacote incorreto')
+                            com1.sendData((101).to_bytes(1, byteorder='big'))
+                            datagrama[i]=[]
+                    
+                    else:
                         if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
                             print('número de bytes correto')
                             com1.sendData((100).to_bytes(1, byteorder='big'))
@@ -137,27 +171,13 @@ def main():
                         else: 
                             print('número de bytes incorreto')
                             com1.sendData((101).to_bytes(1, byteorder='big'))
-                            datagrama[i]=[]
-                    else:
-                        print('número de pacote incorreto')
-                        com1.sendData((101).to_bytes(1, byteorder='big'))
-                        datagrama[i]=[]
-                
-                else:
-                    if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
-                        print('número de bytes correto')
-                        com1.sendData((100).to_bytes(1, byteorder='big'))
-                        i+=1
-                        time.sleep(0.1)
-                    else: 
-                        print('número de bytes incorreto')
-                        com1.sendData((101).to_bytes(1, byteorder='big'))
-                        datagrama[i]=[]
-                    
+                            datagrama[i]=[]   
 
                 
-
-        print(datagrama)
+        print(agrupa_pacotes(datagrama))
+        com1.sendData((100).to_bytes(1, byteorder='big'))
+        
+        
         com1.disable()
     
             
