@@ -23,74 +23,6 @@ import numpy as np
 #serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"                  # Windows(variacao de)
-
-imageR="/imagem.png"
-
-def calcula_quant(tamanho):
-    if tamanho%114==0:
-        return tamanho//114
-    else:
-        return tamanho//114 + 1
-
-def cria_head(n_atual,n_total,n_bytespay):
-    head=[0]*10
-    head[0]=(170).to_bytes(1, byteorder='big')
-    head[1]=(n_atual).to_bytes(1, byteorder='big')
-    head[2]=(n_total).to_bytes(1, byteorder='big')
-    head[3]=(n_bytespay).to_bytes(1, byteorder='big')
-    head[4]=(0).to_bytes(1, byteorder='big')
-    head[5]=(0).to_bytes(1, byteorder='big')
-    head[6]=(0).to_bytes(1, byteorder='big')
-    head[7]=(0).to_bytes(1, byteorder='big')
-    head[8]=(0).to_bytes(1, byteorder='big')
-    head[9]=(0).to_bytes(1, byteorder='big')
-    
-    return head
-
-def cria_lista(binario):
-    lista=[]
-    for bit in binario:
-        lista.append((bit).to_bytes(1, byteorder='big'))
-    return lista
-
-def cria_datagrama(arquivo):
-    #Retorna uma lista de datagramas (cada elemento é uma lista de bygtes com head, payload e eop) a partir de um arquivo
-    bytes=cria_lista(arquivo)
-    payload=114
-  
-    quant_pay=calcula_quant(len(arquivo))
-    lista_datagramas=[0]*quant_pay
-    i=0
-    for datagrama in range(quant_pay):
-        if i!=quant_pay-1:
-            #Se não é o último pacote
-            head=cria_head(i+1,quant_pay,payload)
-            bytes_pay=[0]*payload
-            for quant in range(payload):
-                bytes_pay[quant]=bytes.pop(0)
-        
-        else:
-            #Se é o último pacote
-            head=cria_head(i+1,quant_pay,len(arquivo)%payload)
-            bytes_resto=(len(arquivo))%payload
-            bytes_pay=[0]*bytes_resto
-            for quant in range(bytes_resto):
-                bytes_pay[quant]=bytes.pop(0)
-
-        eop=[(170).to_bytes(1, byteorder='big')]*4
-        data=head+bytes_pay+eop
-        lista_datagramas[i]=data
-        i+=1
-    return lista_datagramas
-
-def agrupa_pacotes(datagrama):
-    lista = []
-    for pacote in datagrama:
-        payload = int.from_bytes(pacote[3], byteorder='big')
-        for byte in pacote[10:payload+10]:
-            lista.append(byte)
-        print(len(lista))
-    return (b''.join(lista))
     
 
 
@@ -101,92 +33,60 @@ def main():
         #para declarar esse objeto é o nome da porta.
         com1 = enlace('COM3')
         
-    
         # Ativa comunicacao. Inicia os threads e a comunicação seiral 
         com1.enable()
         print("comunicacao aberta")
-        rxBuffer = 0
-        lista = []
-        handshake = True
-        while handshake:
-            while  rxBuffer != (204).to_bytes(1, byteorder='big'):
-                rxBuffer, nRx = com1.getData(1)
-                print(rxBuffer)
-                lista.append(rxBuffer)
-                time.sleep(0.05)
-        
-            com1.sendData((100).to_bytes(1, byteorder='big'))
-            rxBuffer, nRx = com1.getData(1)
-            if rxBuffer == (100).to_bytes(1, byteorder='big'):
-                handshake = False
-            elif rxBuffer == (101).to_bytes(1, byteorder='big'):
-                lista = []
-                
 
-        print(lista)
-        print('inicando leitura dos pacotes')
+        ocioso = True
 
-        if int.from_bytes(lista[0], byteorder='big') == 170:
-            pacotes = int.from_bytes(lista[2], byteorder='big')
-        else:
-            pacotes = int.from_bytes(lista[1], byteorder='big')
+        while ocioso:
+            rxBuffer, nRx = com1.getData(10)
+            if rxBuffer[0] == 1:
+                if rxBuffer[2]:
+                    ocioso = False
+            time.sleep(1)
 
+        numPckg = rxBuffer[3]
 
-        datagrama = []
-        for i in range(pacotes):
-            datagrama.append([])
-            
-        
-        i=0
-        
-        while i != pacotes:
-            rxBuffer, nRx = com1.getData(1)
-            datagrama[i].append(rxBuffer)
-            print(rxBuffer)
-            if rxBuffer == (204).to_bytes(1, byteorder='big'):
-                if datagrama[i][len(datagrama[i])-2] == (170).to_bytes(1, byteorder='big'):
-                    if i>=1:
-                        if int.from_bytes(datagrama[i][1], byteorder='big') == int.from_bytes(datagrama[i-1][1], byteorder='big') + 1:
-                            print('número de pacote correto')
-                            if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
-                                print('número de bytes correto')
-                                com1.sendData((100).to_bytes(1, byteorder='big'))
-                                i+=1
-                                time.sleep(0.1)
-                            else: 
-                                print('número de bytes incorreto')
-                                com1.sendData((101).to_bytes(1, byteorder='big'))
-                                datagrama[i]=[]
-                        else:
-                            print('número de pacote incorreto')
-                            com1.sendData((101).to_bytes(1, byteorder='big'))
-                            datagrama[i]=[]
-                    
-                    else:
-                        if len(datagrama[i]) == int.from_bytes(datagrama[i][3], byteorder='big') + 14:
-                            print('número de bytes correto')
-                            com1.sendData((100).to_bytes(1, byteorder='big'))
-                            i+=1
-                            time.sleep(0.1)
+        com1.sendData()
+        cont = 1
+
+        while cont <= numPckg:
+            recebeu = False
+            seconds_to_go_for = 20
+            timer2 = int(time.time())
+
+            while not recebeu:
+                head = com1.getData(10)
+                payload = com1.getData(head[5])
+                eop = com1.getData(4)
+                if head[0] == 3:
+                    recebeu = True
+                    if head[4] == head[7] + 1:
+                        if len(payload) == head[5]:
+                            #lista[cont] = payload
+                            com1.sendData(tipo4)
+                            cont+=1
                         else: 
-                            print('número de bytes incorreto')
-                            com1.sendData((101).to_bytes(1, byteorder='big'))
-                            datagrama[i]=[]   
+                            com1.sendData(tipo6)
+                    else:
+                        com1.sendData(tipo6)
+                else:
+                    time.sleep(1)
 
-                
-        print(agrupa_pacotes(datagrama))
-        com1.sendData((100).to_bytes(1, byteorder='big'))
-        
-        
-        com1.disable()
-    
-            
+                    time_now = int (time.time())
+                    if time_now >= timer2 + seconds_to_go_for:
+                        ocioso = True
+                        com1.sendData(tipo5)
+                        com1.disable()
 
-                
-                
+                    else:
+                        if head == (255).to_bytes(1, byteorder='big'):
+                            com1.sendData(tipo4)
 
-        
-        
+
+
+
     except Exception as erro:
         print("ops! :-\\")
         print(erro)
