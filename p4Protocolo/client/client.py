@@ -50,13 +50,13 @@ def cria_head(tipo,n_atual,n_total,n_bytespay):
         #tamanho do payload
         head[5]=(n_bytespay).to_bytes(1, byteorder='big')
     head[6]=(0).to_bytes(1, byteorder='big')
-    head[7]=(170).to_bytes(1, byteorder='big')
+    head[7]=(0).to_bytes(1, byteorder='big')
     head[8]=(170).to_bytes(1, byteorder='big')
     head[9]=(170).to_bytes(1, byteorder='big')
     return head
 
 def atualiza_head (pacote, cont):
-    pacote[7]=cont
+    pacote[7]=(cont).to_bytes(1, byteorder='big')
     return pacote
 def cria_lista(binario):
     lista=[]
@@ -72,7 +72,7 @@ def cria_datagrama(arquivo):
     quant_pay=calcula_quant(len(arquivo))
     lista_datagramas=[0]*(quant_pay+1)
     i=0
-    for datagrama in range(quant_pay+1):
+    for i in range(quant_pay+1):
 
         if i==0:
             head=cria_head(1,0,quant_pay,0)
@@ -86,7 +86,7 @@ def cria_datagrama(arquivo):
         
         else:
             #Se é o último pacote
-            head=cria_head(i,quant_pay,len(arquivo)%payload)
+            head=cria_head(3,i,quant_pay,len(arquivo)%payload)
             bytes_resto=(len(arquivo))%payload
             bytes_pay=[0]*bytes_resto
             for quant in range(bytes_resto):
@@ -112,7 +112,7 @@ def main():
 
         txBuffer=(255).to_bytes(114*2+10, byteorder='big')
         datagramas=cria_datagrama(txBuffer)
-        numPck=datagramas[0][3]
+        numPck=int.from_bytes(datagramas[0][3], byteorder='big')
         inicia=False
         encerrar=False
         while not inicia:
@@ -133,6 +133,7 @@ def main():
             #envia pckg cont (mensagem t3)
             print("Enviando pacote {}.".format(cont))
             txBuffer=datagramas[cont]
+            print(txBuffer)
             com1.sendData(np.asarray(txBuffer))
             startTimer2 = int(time.time())
 
@@ -143,7 +144,8 @@ def main():
                     if rxBuffer[0]==4:
                         #se recebeu mensagem t4 (confirmação do server):
                         print("Recebeu confirmação do servidor.")
-                        datagramas[cont+1]=atualiza_head(datagramas[cont+1],cont)
+                        if cont < numPck:
+                            datagramas[cont+1]=atualiza_head(datagramas[cont+1],cont)
                         cont+=1
                         recebeuConf=True
                     else:
