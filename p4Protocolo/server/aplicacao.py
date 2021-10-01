@@ -36,10 +36,11 @@ def cria_head(tipo,n_atual,n_total,n_bytespay):
     if tipo==1:
         #id arquivo em handshake
         head[5]=(0).to_bytes(1, byteorder='big')
+
     else:
         #tamanho do payload
         head[5]=(n_bytespay).to_bytes(1, byteorder='big')
-    head[6]=(0).to_bytes(1, byteorder='big')
+    head[6]=(n_atual).to_bytes(1, byteorder='big')
     head[7]=(170).to_bytes(1, byteorder='big')
     head[8]=(170).to_bytes(1, byteorder='big')
     head[9]=(170).to_bytes(1, byteorder='big')
@@ -64,15 +65,20 @@ def main():
         while ocioso:
             rxBuffer, nRx = com1.getData(14)
             if rxBuffer[0] == 1:
+                print("mensagem certa")
                 if rxBuffer[2]==meu_id:
+                    print("é pra mim")
                     ocioso = False
             time.sleep(1)
 
         numPckg = rxBuffer[3]
+        print("numero certo")
         cont = 1
         msgTipo2=cria_head(2,cont,numPckg,0)
+        
         msgTipo2=msgTipo2+eop_fixo
-        com1.sendData(msgTipo2)
+        print(msgTipo2)
+        com1.sendData(np.asarray(msgTipo2))
 
         arquivo=[0]*numPckg
         while cont <= numPckg:
@@ -81,11 +87,16 @@ def main():
             timer2 = int(time.time())
 
             while not recebeu:
-                head = com1.getData(10)
-                payload = com1.getData(head[5])
-                eop = com1.getData(4)
+                head, headn = com1.getData(10)
+                print(head)
+                payload, payloadn = com1.getData(head[5])
+                print(payload)
+                eop, eopn = com1.getData(4)
+                print(eop)
                 if head[0] == 3:
                     recebeu = True
+                    print("mensagem certa")
+                    print (head[7])
                     if head[4] == head[7] + 1:
                         if len(payload) == head[5]:
                             arquivo[cont-1] = payload
@@ -93,16 +104,21 @@ def main():
                             msgTipo4=cria_head(4,cont,numPckg,0)
                             msgTipo4=msgTipo4+eop_fixo
 
-                            com1.sendData(msgTipo4)
+                            com1.sendData(np.asarray(msgTipo4))
                             cont+=1
+                            print("enviando confirmação")
+                            print(cont)
+                            print(numPckg)
                         else:
                             msgTipo6=cria_head(6,cont,numPckg,0)
                             msgTipo6=msgTipo6+eop_fixo 
-                            com1.sendData(msgTipo6)
+                            com1.sendData(np.asarray(msgTipo6))
+                            print("erro na quantidade de bytes")
                     else:
                         msgTipo6=cria_head(6,cont,numPckg,0)
                         msgTipo6=msgTipo6+eop_fixo 
-                        com1.sendData(msgTipo6)
+                        com1.sendData(np.asarray(msgTipo6))
+                        print("erro número do pacote")
                 else:
                     time.sleep(1)
 
@@ -113,17 +129,17 @@ def main():
                         msgTipo5=cria_head(5,cont,numPckg,0)
                         msgTipo5=msgTipo5+eop_fixo 
 
-                        com1.sendData(msgTipo5)
+                        com1.sendData(np.asarray(msgTipo5))
                         com1.disable()
 
                     else:
                         if head == (255).to_bytes(1, byteorder='big'):
                             msgTipo4=cria_head(4,cont,numPckg,0)
                             msgTipo4=msgTipo4+eop_fixo 
-                            com1.sendData(msgTipo4)
+                            com1.sendData(np.asarray(msgTipo4))
 
 
-
+        com1.disable()
 
     except Exception as erro:
         print("ops! :-\\")
