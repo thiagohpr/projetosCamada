@@ -25,7 +25,32 @@ import numpy as np
 serialName = "COM3"                  # Windows(variacao de)
     
 
+def create_eop():
+    print("função eop")
+    eop = b'\xFF\xAA\xFF\xAA'
+    return (eop)
 
+def create_head(tipo, total_package, package_number, payload_len, restart_package, last_package):
+    print("função head")
+    h0 = (tipo).to_bytes(1,byteorder = 'big')
+    print(f'O tipo da mensagem colocado no head é:\n{h0}')
+    h1 = (0).to_bytes(1,byteorder = 'big')
+    h2 = (0).to_bytes(1,byteorder = 'big') 
+    h3 = (total_package).to_bytes(1,byteorder ='big')
+    h4 = (package_number).to_bytes(1,byteorder ='big')
+    h5 = (payload_len).to_bytes(1,byteorder ='big')
+    h6 = (restart_package).to_bytes(1,byteorder ='big')
+    h7 = (last_package).to_bytes(1,byteorder ='big')
+    h8 = (0).to_bytes(1,byteorder = 'big')
+    h9 = (0).to_bytes(1,byteorder = 'big')
+   
+
+    head = h0 + h1 + h2 + h3 + h4 + h5 + h6 + h7 + h8 + h9
+    
+    if len(head) == 10:
+        return (head) #bytes e int 
+    else:
+        print('head != 10')
 
 def main():
     try:
@@ -65,11 +90,14 @@ def main():
                     if head[4] == head[7] + 1:
                         if len(payload) == head[5]:
                             #lista[cont] = payload
+                            tipo4 = create_head(4,head[3],head[4],head[5],head[6],head[7]) + payload + create_eop
                             com1.sendData(tipo4)
                             cont+=1
                         else: 
+                            tipo6 = create_head(6,head[3],head[4],head[5],head[6],head[7]) + payload + create_eop
                             com1.sendData(tipo6)
                     else:
+                        tipo6 = create_head(6,head[3],head[4],head[5],head[6],head[7]) + payload + create_eop
                         com1.sendData(tipo6)
                 else:
                     time.sleep(1)
@@ -77,11 +105,13 @@ def main():
                     time_now = int (time.time())
                     if time_now >= timer2 + seconds_to_go_for:
                         ocioso = True
+                        tipo5 = create_head(5,head[3],head[4],head[5],head[6],head[7]) + payload + create_eop
                         com1.sendData(tipo5)
                         com1.disable()
 
                     else:
                         if head == (255).to_bytes(1, byteorder='big'):
+                            tipo4 = create_head(4,head[3],head[4],head[5],head[6],head[7]) + payload + create_eop
                             com1.sendData(tipo4)
 
 
