@@ -36,10 +36,11 @@ def calcula_quant(tamanho):
         return tamanho//114 + 1
 
 def cria_head(tipo,n_atual,n_total,n_bytespay):
+    id_servidor=0
     head=[0]*10
     head[0]=(tipo).to_bytes(1, byteorder='big')
     head[1]=(0).to_bytes(1, byteorder='big')#id sensor
-    head[2]=(0).to_bytes(1, byteorder='big')#id servidor
+    head[2]=(id_servidor).to_bytes(1, byteorder='big')#id servidor
     head[3]=(n_total).to_bytes(1, byteorder='big')
     head[4]=(n_atual).to_bytes(1, byteorder='big')
     if tipo==1:
