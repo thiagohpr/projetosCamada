@@ -23,9 +23,31 @@ import numpy as np
 #serialName = "/dev/ttyACM0"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 serialName = "COM3"                  # Windows(variacao de)
-    
 
+meu_id=0
+def cria_head(tipo,n_atual,n_total,n_bytespay):
+    id_servidor=0
+    head=[0]*10
+    head[0]=(tipo).to_bytes(1, byteorder='big')
+    head[1]=(0).to_bytes(1, byteorder='big')#id sensor
+    head[2]=(id_servidor).to_bytes(1, byteorder='big')#id servidor
+    head[3]=(n_total).to_bytes(1, byteorder='big')
+    head[4]=(n_atual).to_bytes(1, byteorder='big')
+    if tipo==1:
+        #id arquivo em handshake
+        head[5]=(0).to_bytes(1, byteorder='big')
+    else:
+        #tamanho do payload
+        head[5]=(n_bytespay).to_bytes(1, byteorder='big')
+    head[6]=(0).to_bytes(1, byteorder='big')
+    head[7]=(170).to_bytes(1, byteorder='big')
+    head[8]=(170).to_bytes(1, byteorder='big')
+    head[9]=(170).to_bytes(1, byteorder='big')
+    return head
 
+eop1=b'\xaa'
+eop2=b'\xff'
+eop_fixo=[eop2,eop1,eop2,eop1]
 
 def main():
     try:
@@ -40,17 +62,19 @@ def main():
         ocioso = True
 
         while ocioso:
-            rxBuffer, nRx = com1.getData(10)
+            rxBuffer, nRx = com1.getData(14)
             if rxBuffer[0] == 1:
-                if rxBuffer[2]:
+                if rxBuffer[2]==meu_id:
                     ocioso = False
             time.sleep(1)
 
         numPckg = rxBuffer[3]
-
-        com1.sendData()
         cont = 1
+        msgTipo2=cria_head(2,cont,numPckg,0)
+        msgTipo2=msgTipo2+eop_fixo
+        com1.sendData(msgTipo2)
 
+        arquivo=[0]*numPckg
         while cont <= numPckg:
             recebeu = False
             seconds_to_go_for = 20
@@ -64,25 +88,39 @@ def main():
                     recebeu = True
                     if head[4] == head[7] + 1:
                         if len(payload) == head[5]:
-                            #lista[cont] = payload
-                            com1.sendData(tipo4)
+                            arquivo[cont-1] = payload
+
+                            msgTipo4=cria_head(4,cont,numPckg,0)
+                            msgTipo4=msgTipo4+eop_fixo
+
+                            com1.sendData(msgTipo4)
                             cont+=1
-                        else: 
-                            com1.sendData(tipo6)
+                        else:
+                            msgTipo6=cria_head(6,cont,numPckg,0)
+                            msgTipo6=msgTipo6+eop_fixo 
+                            com1.sendData(msgTipo6)
                     else:
-                        com1.sendData(tipo6)
+                        msgTipo6=cria_head(6,cont,numPckg,0)
+                        msgTipo6=msgTipo6+eop_fixo 
+                        com1.sendData(msgTipo6)
                 else:
                     time.sleep(1)
 
                     time_now = int (time.time())
                     if time_now >= timer2 + seconds_to_go_for:
                         ocioso = True
-                        com1.sendData(tipo5)
+
+                        msgTipo5=cria_head(5,cont,numPckg,0)
+                        msgTipo5=msgTipo5+eop_fixo 
+
+                        com1.sendData(msgTipo5)
                         com1.disable()
 
                     else:
                         if head == (255).to_bytes(1, byteorder='big'):
-                            com1.sendData(tipo4)
+                            msgTipo4=cria_head(4,cont,numPckg,0)
+                            msgTipo4=msgTipo4+eop_fixo 
+                            com1.sendData(msgTipo4)
 
 
 
