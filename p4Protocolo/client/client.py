@@ -99,83 +99,136 @@ def cria_datagrama(arquivo):
         i+=1
     return lista_datagramas
 
+
+def cria_log(formato,head):
+    
+    tipo=str(int.from_bytes(head[0], byteorder='big'))
+    tamanho_total=str(int.from_bytes(head[5], byteorder='big')+14)
+    linha=time.ctime()+" / "+formato+" / "+tipo+" / "+tamanho_total
+    if tipo == '3':
+        crc=(hex(int.from_bytes(head[8], byteorder='big'))[2:]+hex(int.from_bytes(head[9], byteorder='big'))[2:]).upper()
+        linha+=" / "+str(int.from_bytes(head[4], byteorder='big'))+" / "+str(int.from_bytes(head[3], byteorder='big'))+" / "+crc
+    return linha
+
+def log_envio(head):
+    with open("C:/Users/thpro/Desktop/Camada Física/projetosCamada/p4Protocolo/client/log.txt", "a") as file:
+        file.write(cria_log("envio",head))
+        file.write('\n')
+def log_recebeu(head):
+    with open("C:/Users/thpro/Desktop/Camada Física/projetosCamada/p4Protocolo/client/log.txt", "a") as file:
+        file.write(cria_log("receb",head))
+        file.write('\n')
+def cria_lista(binario):
+    lista=[]
+    for bit in binario:
+        lista.append((bit).to_bytes(1, byteorder='big'))
+    return lista
 def main():
     try:
         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         #para declarar esse objeto é o nome da porta.
-        com1 = enlace('COM3')
-        
+        com1 = enlace('COM4')
+
     
         # Ativa comunicacao. Inicia os threads e a comunicação seiral 
         com1.enable()
+        with open("C:/Users/thpro/Desktop/Camada Física/projetosCamada/p4Protocolo/client/log.txt", "w") as file:
+            file.write("Comunicação aberta")
+            file.write('\n')
         print ('Comunicação aberta')
 
-        txBuffer=(255).to_bytes(114*2+10, byteorder='big')
+        txBuffer=(255).to_bytes(114*9+10, byteorder='big')
         datagramas=cria_datagrama(txBuffer)
         numPck=int.from_bytes(datagramas[0][3], byteorder='big')
         inicia=False
         encerrar=False
+        startTimer2 = int(time.time())
         while not inicia:
             #envia mensagem t1
             print("Iniciando Handshake")
             txBuffer=datagramas[0]
+
             com1.sendData(np.asarray(txBuffer))
+            log_envio(txBuffer)
+            print(txBuffer)
+
+
             time.sleep(5)
             rxBuffer,nRx=com1.getData(14)
             if rxBuffer[0]==2:
             #se recebeu ok:
+                log_recebeu(cria_lista(rxBuffer))
                 print("Cliente recebeu mensagem de confirmação.")
                 inicia=True
                 cont=1
             else:
                 print("Cliente não recebeu a confirmação.")
-        while cont<=numPck:
-            #envia pckg cont (mensagem t3)
-            print("Enviando pacote {}.".format(cont))
-            txBuffer=datagramas[cont]
-            print(txBuffer)
-            com1.sendData(np.asarray(txBuffer))
-            startTimer2 = int(time.time())
-
-            recebeuConf=False
-            while not recebeuConf:
-                if not encerrar:
-                    rxBuffer,nRx=com1.getData(14)
-                    if rxBuffer[0]==4:
-                        #se recebeu mensagem t4 (confirmação do server):
-                        print("Recebeu confirmação do servidor.")
-                        if cont < numPck:
-                            datagramas[cont+1]=atualiza_head(datagramas[cont+1],cont)
-                        cont+=1
-                        recebeuConf=True
-                    else:
-                        #estourou timer 1
-                        if rxBuffer==(255).to_bytes(1, byteorder='big'):
-                            #reenviar pckg cont (mensagem t3)
-                            #reset Timer1
-                            print("Timer 1 estourado. Reenviando pacote {}.".format(cont))
-                            txBuffer=datagramas[cont]
-                            com1.sendData(np.asarray(txBuffer))
-                        time_now = int(time.time())
-                        if time_now >= startTimer2 + 20:
-                            print("Timer 2 encerrado. Timeout de envio do arquivo, finalizando a comunicação.")
-                            msgTipo5=cria_head(5,cont,numPck,0)
-                            msgTipo5=msgTipo5+eop
-                            com1.sendData(np.asarray(msgTipo5))
-                            encerrar=True
-                        else:
-                            rxBuffer,nRx=com1.getData(14)
-                            if rxBuffer[0]==6:
-                                print("Erro no número do pacote.")
-                                #corrigir cont
-                                cont=rxBuffer[6]
-                                txBuffer=datagramas[cont]
-                                com1.sendData(np.asarray(txBuffer))
-                                startTimer2 = int(time.time())
-                else:
-                    break
+                time_now = int(time.time())
+                if time_now >= startTimer2 + 20:
+                    msgTipo5=cria_head(5,0,numPck,0)
+                    msgTipo5=msgTipo5+eop
+                    com1.sendData(np.asarray(msgTipo5))
+                    log_envio(msgTipo5)
+                    encerrar=True
             if encerrar==True:
                 break
+        if encerrar==False:
+            while cont<=numPck:
+                #envia pckg cont (mensagem t3)
+                print("Enviando pacote {}.".format(cont))
+                txBuffer=datagramas[cont]
+                print(txBuffer)
+
+                com1.sendData(np.asarray(txBuffer))
+                log_envio(txBuffer)
+
+                startTimer2 = int(time.time())
+
+                recebeuConf=False
+                while not recebeuConf:
+                    if not encerrar:
+                        rxBuffer,nRx=com1.getData(14)
+                        if rxBuffer[0]==4:
+                            log_recebeu(cria_lista(rxBuffer))
+                            #se recebeu mensagem t4 (confirmação do server):
+                            print("Recebeu confirmação do servidor.")
+                            if cont < numPck:
+                                datagramas[cont+1]=atualiza_head(datagramas[cont+1],cont)
+                            cont+=1
+                            recebeuConf=True
+                        else:
+                            #estourou timer 1
+                            if rxBuffer==(255).to_bytes(1, byteorder='big'):
+                                #reenviar pckg cont (mensagem t3)
+                                #reset Timer1
+                                print("Timer 1 estourado. Reenviando pacote {}.".format(cont))
+                                txBuffer=datagramas[cont]
+                                com1.sendData(np.asarray(txBuffer))
+                                log_envio(txBuffer)
+
+                            time_now = int(time.time())
+                            if time_now >= startTimer2 + 20:
+                                print("Timer 2 encerrado. Timeout de envio do arquivo, finalizando a comunicação.")
+                                msgTipo5=cria_head(5,cont,numPck,0)
+                                msgTipo5=msgTipo5+eop
+                                com1.sendData(np.asarray(msgTipo5))
+                                log_envio(msgTipo5)
+                                encerrar=True
+                            else:
+                                rxBuffer,nRx=com1.getData(14)
+                                if rxBuffer[0]==6:
+                                    log_recebeu(cria_lista(rxBuffer))
+                                    print("Erro no número do pacote.")
+                                    #corrigir cont
+                                    cont=rxBuffer[6]
+                                    txBuffer=datagramas[cont]
+                                    com1.sendData(np.asarray(txBuffer))
+                                    log_envio(txBuffer)
+                                    startTimer2 = int(time.time())
+                    else:
+                        break
+                if encerrar==True:
+                    break
 
 
 
@@ -183,7 +236,9 @@ def main():
         print("Comunicação encerrada")
         print("-------------------------")
         com1.disable()
-        
+        with open("C:/Users/thpro/Desktop/Camada Física/projetosCamada/p4Protocolo/client/log.txt", "a") as file:
+            file.write("Comunicação encerrada")
+
     except Exception as erro:
         print("ops! :-\\")
         print(erro)
@@ -193,6 +248,3 @@ def main():
    # so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
 if __name__ == "__main__":
     main()
-
-
-
