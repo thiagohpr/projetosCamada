@@ -1,0 +1,5 @@
+Comunicação aberta
+Wed Oct  6 19:36:03 2021 / envio / 1 / 14
+Wed Oct  6 19:36:13 2021 / envio / 1 / 14
+Wed Oct  6 19:36:23 2021 / envio / 5 / 14
+Comunicação encerrada

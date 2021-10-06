@@ -1,0 +1,10 @@
+Comunicação aberta
+Wed Oct  6 19:25:04 2021 / receb / 1 / 14
+Wed Oct  6 19:25:05 2021 / envio / 2 / 14
+Wed Oct  6 19:25:09 2021 / receb / 3 / 128 / 1 / 3 / AAAA
+Wed Oct  6 19:25:09 2021 / envio / 4 / 14
+Wed Oct  6 19:25:10 2021 / receb / 3 / 128 / 2 / 3 / AAAA
+Wed Oct  6 19:25:10 2021 / envio / 4 / 14
+Wed Oct  6 19:25:10 2021 / receb / 3 / 24 / 3 / 3 / AAAA
+Wed Oct  6 19:25:10 2021 / envio / 4 / 14
+Comunicação encerrada

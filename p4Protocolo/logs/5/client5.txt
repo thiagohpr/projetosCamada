@@ -1,0 +1,25 @@
+Comunicação aberta
+Wed Oct  6 20:24:09 2021 / envio / 1 / 14
+Wed Oct  6 20:24:14 2021 / receb / 2 / 14
+Wed Oct  6 20:24:14 2021 / envio / 3 / 128 / 1 / 10 / AAAA
+Wed Oct  6 20:24:15 2021 / receb / 4 / 14
+Wed Oct  6 20:24:15 2021 / envio / 3 / 128 / 2 / 10 / AAAA
+Wed Oct  6 20:24:16 2021 / receb / 4 / 14
+Wed Oct  6 20:24:16 2021 / envio / 3 / 128 / 3 / 10 / AAAA
+Wed Oct  6 20:24:16 2021 / receb / 4 / 14
+Wed Oct  6 20:24:16 2021 / envio / 3 / 128 / 4 / 10 / AAAA
+Wed Oct  6 20:24:17 2021 / receb / 4 / 14
+Wed Oct  6 20:24:17 2021 / envio / 3 / 128 / 5 / 10 / AAAA
+Wed Oct  6 20:24:22 2021 / envio / 3 / 128 / 5 / 10 / AAAA
+Wed Oct  6 20:24:29 2021 / receb / 4 / 14
+Wed Oct  6 20:24:29 2021 / envio / 3 / 128 / 6 / 10 / AAAA
+Wed Oct  6 20:24:29 2021 / receb / 4 / 14
+Wed Oct  6 20:24:29 2021 / envio / 3 / 128 / 7 / 10 / AAAA
+Wed Oct  6 20:24:30 2021 / receb / 4 / 14
+Wed Oct  6 20:24:30 2021 / envio / 3 / 128 / 8 / 10 / AAAA
+Wed Oct  6 20:24:30 2021 / receb / 4 / 14
+Wed Oct  6 20:24:30 2021 / envio / 3 / 128 / 9 / 10 / AAAA
+Wed Oct  6 20:24:31 2021 / receb / 4 / 14
+Wed Oct  6 20:24:31 2021 / envio / 3 / 24 / 10 / 10 / AAAA
+Wed Oct  6 20:24:31 2021 / receb / 4 / 14
+Comunicação encerrada
