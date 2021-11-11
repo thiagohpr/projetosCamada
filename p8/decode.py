@@ -2,72 +2,48 @@
 """Show a text-mode spectrogram using live microphone data."""
 
 #Importe todas as bibliotecas
-
-
-#funcao para transformas intensidade acustica em dB
-def todB(s):
-    sdB = 10*np.log10(s)
-    return(sdB)
+import numpy as np
+import sounddevice as sd
+import soundfile as sf
+import matplotlib.pyplot as plt
+from scipy.fftpack import fft
+from scipy import signal as window
+from suaBibSignal import signalMeu
+from peakutils.plot import plot as pplot
+from funcoes_LPF import LPF
 
 
 def main():
- 
-    #declare um objeto da classe da sua biblioteca de apoio (cedida)    
-    #declare uma variavel com a frequencia de amostragem, sendo 44100
-    
-    #voce importou a bilioteca sounddevice como, por exemplo, sd. entao
-    # os seguintes parametros devem ser setados:
-    
-    sd.default.samplerate = #taxa de amostragem
-    sd.default.channels = 2  #voce pode ter que alterar isso dependendo da sua placa
-    duration = #tempo em segundos que ira aquisitar o sinal acustico captado pelo mic
+    figure,axs = plt.subplots(1,2)
+    print("Inicializando decoder")
 
+    # 8. Verifique que o sinal recebido tem a banda dentro de 10kHz e 18kHz (faça o Fourier).
+    sinal=signalMeu()
+    modulado, fs = sf.read('modulado.wav')
 
-    # faca um printo na tela dizendo que a captacao comecará em n segundos. e entao 
-    #use um time.sleep para a espera
-   
-   #faca um print informando que a gravacao foi inicializada
-   
-   #declare uma variavel "duracao" com a duracao em segundos da gravacao. poucos segundos ... 
-   #calcule o numero de amostras "numAmostras" que serao feitas (numero de aquisicoes)
-   
-    audio = sd.rec(int(numAmostras), freqDeAmostragem, channels=1)
-    sd.wait()
-    print("...     FIM")
-    
-    #analise sua variavel "audio". pode ser um vetor com 1 ou 2 colunas, lista ...
-    #grave uma variavel com apenas a parte que interessa (dados)
-    
+    # 9. Demodule o áudio enviado pelo seu colega.
+    print('Demodulando o sinal')
+    x2,portadora=sinal.generateSin(14000,1,5,fs)
+    demodulado=modulado*portadora
 
-    # use a funcao linspace e crie o vetor tempo. Um instante correspondente a cada amostra!
-    t = np.linspace(inicio,fim,numPontos)
+    xf, yf = sinal.calcFFT(demodulado, fs)
+    axs[0].set_title('Gráfico 6: Sinal demodulado no domínio da frequência')
+    axs[0].plot(xf,yf)
+    
+    # 10. Filtre as frequências superiores a 4kHz.
+    print('Filtrando o sinal com Low Pass Filter')
+    low_pass_freq=4000
+    demodulado_lpf=LPF(demodulado,low_pass_freq,fs)
 
-    # plot do gravico  áudio vs tempo!
-   
+    xf2, yf2 = sinal.calcFFT(demodulado_lpf, fs)
+    axs[1].set_title('Gráfico 7: Sinal demodulado e filtrado no domínio da frequência')
+    axs[1].plot(xf2,yf2)
     
-    ## Calcula e exibe o Fourier do sinal audio. como saida tem-se a amplitude e as frequencias
-    xf, yf = signal.calcFFT(y, fs)
-    plt.figure("F(y)")
-    plt.plot(xf,yf)
-    plt.grid()
-    plt.title('Fourier audio')
-    
-
-    #esta funcao analisa o fourier e encontra os picos
-    #voce deve aprender a usa-la. ha como ajustar a sensibilidade, ou seja, o que é um pico?
-    #voce deve tambem evitar que dois picos proximos sejam identificados, pois pequenas variacoes na
-    #frequencia do sinal podem gerar mais de um pico, e na verdade tempos apenas 1.
-   
-    index = peakutils.indexes(,,)
-    
-    #printe os picos encontrados! 
-    
-    #encontre na tabela duas frequencias proximas às frequencias de pico encontradas e descubra qual foi a tecla
-    #print a tecla.
-    
-  
-    ## Exibe gráficos
     plt.show()
+    # 11. Execute o áudio do sinal demodulado e verifique que novamente é audível.
+    print('Executando o áudio demodulado')
+    sd.play(demodulado_lpf, fs)
+    sd.wait()
 
 if __name__ == "__main__":
     main()
